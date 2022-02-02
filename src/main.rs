@@ -66,7 +66,7 @@ impl<'r> FromFormField<'r> for MultipleOfFive {
 async fn get_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
     let game = sqlx::query!(
         "
-        SELECT id, player_1, player_2, player_3 FROM games where id = $1
+        SELECT id, player_1, player_2, player_3 FROM tysiac_games where id = $1
         ",
         game_id
     )
@@ -74,7 +74,7 @@ async fn get_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template
 
     let scores = sqlx::query!(
         "
-        SELECT player_1, player_2, player_3 FROM scores where game_id = $1 order by index
+        SELECT player_1, player_2, player_3 FROM tysiac_scores where game_id = $1 order by index
         ",
         game_id
     )
@@ -117,7 +117,7 @@ async fn games_new(
     pool: &State<Pool<Postgres>>,
 ) -> Option<Redirect> {
     let result = sqlx::query!(
-        "insert into games (player_1, player_2, player_3) values ($1, $2, $3) returning id",
+        "insert into tysiac_games (player_1, player_2, player_3) values ($1, $2, $3) returning id",
         player_names.player_1_name,
         player_names.player_2_name,
         player_names.player_3_name,
@@ -158,7 +158,7 @@ async fn add_scores(
     pool: &State<Pool<Postgres>>,
 ) -> Option<Redirect> {
     sqlx::query!(
-        "insert into scores (game_id, player_1, player_2, player_3 ) values ($1, $2, $3, $4)",
+        "insert into tysiac_scores (game_id, player_1, player_2, player_3 ) values ($1, $2, $3, $4)",
         game_id,
         player_scores.player_1_score.0,
         player_scores.player_2_score.0,

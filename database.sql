@@ -1,8 +1,8 @@
 --
--- Name: games; Type: TABLE; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games; Type: TABLE; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-CREATE TABLE public.games (
+CREATE TABLE public.tysiac_games (
     id integer NOT NULL,
     player_1 character varying NOT NULL,
     player_2 character varying NOT NULL,
@@ -10,10 +10,10 @@ CREATE TABLE public.games (
 );
 
 --
--- Name: games_id_seq; Type: SEQUENCE; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games_id_seq; Type: SEQUENCE; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-CREATE SEQUENCE public.games_id_seq
+CREATE SEQUENCE public.tysiac_games_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -23,17 +23,17 @@ CREATE SEQUENCE public.games_id_seq
 
 
 --
--- Name: games_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-ALTER SEQUENCE public.games_id_seq OWNED BY public.games.id;
+ALTER SEQUENCE public.tysiac_games_id_seq OWNED BY public.tysiac_games.id;
 
 
 --
--- Name: scores; Type: TABLE; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_scores; Type: TABLE; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-CREATE TABLE public.scores (
+CREATE TABLE public.tysiac_scores (
     game_id integer,
     index integer NOT NULL,
     player_1 integer,
@@ -43,10 +43,10 @@ CREATE TABLE public.scores (
 
 
 --
--- Name: scores_index_seq; Type: SEQUENCE; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_scores_index_seq; Type: SEQUENCE; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-CREATE SEQUENCE public.scores_index_seq
+CREATE SEQUENCE public.tysiac_scores_index_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -56,31 +56,31 @@ CREATE SEQUENCE public.scores_index_seq
 
 
 --
--- Name: scores_index_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_scores_index_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-ALTER SEQUENCE public.scores_index_seq OWNED BY public.scores.index;
-
-
---
--- Name: games id; Type: DEFAULT; Schema: public; Owner: iedftdnfgxrqgs
---
-
-ALTER TABLE ONLY public.games ALTER COLUMN id SET DEFAULT nextval('public.games_id_seq'::regclass);
+ALTER SEQUENCE public.tysiac_scores_index_seq OWNED BY public.tysiac_scores.index;
 
 
 --
--- Name: scores index; Type: DEFAULT; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games id; Type: DEFAULT; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-ALTER TABLE ONLY public.scores ALTER COLUMN index SET DEFAULT nextval('public.scores_index_seq'::regclass);
+ALTER TABLE ONLY public.tysiac_games ALTER COLUMN id SET DEFAULT nextval('public.tysiac_games_id_seq'::regclass);
 
 
 --
--- Data for Name: games; Type: TABLE DATA; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_scores index; Type: DEFAULT; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-COPY public.games (id, player_1, player_2, player_3) FROM stdin;
+ALTER TABLE ONLY public.tysiac_scores ALTER COLUMN index SET DEFAULT nextval('public.tysiac_scores_index_seq'::regclass);
+
+
+--
+-- Data for Name: tysiac_games; Type: TABLE DATA; Schema: public; Owner: iedftdnfgxrqgs
+--
+
+COPY public.tysiac_games (id, player_1, player_2, player_3) FROM stdin;
 4	Alissa	Daniel	Sheyne
 5	Alissa	Daniel	Sheyne
 6	Alissa	Sheyne	Daniel
@@ -107,10 +107,10 @@ COPY public.games (id, player_1, player_2, player_3) FROM stdin;
 
 
 --
--- Data for Name: scores; Type: TABLE DATA; Schema: public; Owner: iedftdnfgxrqgs
+-- Data for Name: tysiac_scores; Type: TABLE DATA; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-COPY public.scores (game_id, index, player_1, player_2, player_3) FROM stdin;
+COPY public.tysiac_scores (game_id, index, player_1, player_2, player_3) FROM stdin;
 4	21	105	40	15
 4	22	40	-105	80
 4	23	50	15	140
@@ -515,31 +515,31 @@ COPY public.scores (game_id, index, player_1, player_2, player_3) FROM stdin;
 
 
 --
--- Name: games_id_seq; Type: SEQUENCE SET; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games_id_seq; Type: SEQUENCE SET; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-SELECT pg_catalog.setval('public.games_id_seq', 25, true);
-
-
---
--- Name: scores_index_seq; Type: SEQUENCE SET; Schema: public; Owner: iedftdnfgxrqgs
---
-
-SELECT pg_catalog.setval('public.scores_index_seq', 420, true);
+SELECT pg_catalog.setval('public.tysiac_games_id_seq', 25, true);
 
 
 --
--- Name: games games_pkey; Type: CONSTRAINT; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_scores_index_seq; Type: SEQUENCE SET; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-ALTER TABLE ONLY public.games
-    ADD CONSTRAINT games_pkey PRIMARY KEY (id);
+SELECT pg_catalog.setval('public.tysiac_scores_index_seq', 420, true);
 
 
 --
--- Name: scores scores_game_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: iedftdnfgxrqgs
+-- Name: tysiac_games tysiac_games_pkey; Type: CONSTRAINT; Schema: public; Owner: iedftdnfgxrqgs
 --
 
-ALTER TABLE ONLY public.scores
-    ADD CONSTRAINT scores_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.games(id);
+ALTER TABLE ONLY public.tysiac_games
+    ADD CONSTRAINT tysiac_games_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tysiac_scores tysiac_scores_game_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: iedftdnfgxrqgs
+--
+
+ALTER TABLE ONLY public.tysiac_scores
+    ADD CONSTRAINT tysiac_scores_game_id_fkey FOREIGN KEY (game_id) REFERENCES public.tysiac_games(id);
 
