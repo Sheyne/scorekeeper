@@ -1,6 +1,6 @@
 <form method="POST" action="new">
-<input type=text name="player-1-name" /><br/>
-<input type=text name="player-2-name" /><br/>
-<input type=text name="player-3-name" /><br/>
+<label for="player-1-name">Player 1's Name: </label><input type=text id="player-1-name" name="player-1-name" /><br/>
+<label for="player-2-name">Player 2's Name: </label><input type=text id="player-2-name" name="player-2-name" /><br/>
+<label for="player-3-name">Player 3's Name: </label><input type=text id="player-3-name" name="player-3-name" /><br/>
 <input type="submit" />
 </form>
