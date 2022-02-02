@@ -5,6 +5,7 @@
 {% set dx = width / num_scores %}
 
 <a href="{{game_id - 1}}">prev</a>
+<a href="new">new</a>
 <a href="{{game_id + 1}}">next</a>
 
 <table>
