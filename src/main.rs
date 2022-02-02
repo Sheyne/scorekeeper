@@ -1,13 +1,15 @@
 #[macro_use]
 extern crate rocket;
+use anyhow::Result;
 use rocket::{
-    form::{Form, FromFormField, Result, ValueField},
+    form::{Form, FromFormField, ValueField},
     response::Redirect,
     State,
 };
 use rocket_dyn_templates::Template;
 use serde::Serialize;
-use std::sync::RwLock;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use std::env;
 
 #[derive(Serialize)]
 struct TysiacGame {
@@ -46,7 +48,7 @@ impl<'a> From<&'a TysiacGame> for TysiacGameContext<'a> {
 struct MultipleOfFive(i32);
 
 impl<'r> FromFormField<'r> for MultipleOfFive {
-    fn from_value(value: ValueField<'r>) -> Result<'r, Self> {
+    fn from_value(value: ValueField<'r>) -> rocket::form::Result<'r, Self> {
         let x = value.value.parse()?;
         if x % 5 != 0 {
             Err(rocket::form::Error::validation("not a multiple of 5").into())
@@ -67,29 +69,79 @@ struct RoundScores {
 }
 
 #[get("/")]
-fn index(game: &State<RwLock<TysiacGame>>) -> Template {
-    let game: &TysiacGame = &game.read().unwrap();
-    let context: TysiacGameContext = game.into();
-    Template::render("index", &context)
+async fn index(pool: &State<Pool<Postgres>>) -> Option<Template> {
+    let game = sqlx::query!(
+        "
+        SELECT id, player_1, player_2, player_3 FROM games where id = $1
+        ",
+        1
+    )
+    .fetch_one(&**pool)
+    .await
+    .ok()?;
+
+    let scores = sqlx::query!(
+        "
+        SELECT player_1, player_2, player_3 FROM scores where game_id = $1 order by index
+        ",
+        game.id
+    )
+    .fetch_all(&**pool)
+    .await
+    .ok()?;
+
+    let game = TysiacGame {
+        player_names: (game.player_1, game.player_2, game.player_3),
+        round_scores: scores
+            .into_iter()
+            .map(|r| {
+                (
+                    r.player_1.unwrap(),
+                    r.player_2.unwrap(),
+                    r.player_3.unwrap(),
+                )
+            })
+            .collect(),
+    };
+
+    let context: TysiacGameContext = (&game).into();
+    Some(Template::render("index", &context))
 }
 
 #[post("/add-scores", data = "<player_scores>")]
-fn add_scores(player_scores: Form<RoundScores>, game: &State<RwLock<TysiacGame>>) -> Redirect {
-    game.write().unwrap().round_scores.push((
+async fn add_scores(
+    player_scores: Form<RoundScores>,
+    pool: &State<Pool<Postgres>>,
+) -> Option<Redirect> {
+    sqlx::query!(
+        "insert into scores (game_id, player_1, player_2, player_3 ) values ($1, $2, $3, $4)",
+        1,
         player_scores.player_1_score.0,
         player_scores.player_2_score.0,
         player_scores.player_3_score.0,
-    ));
-    Redirect::to(uri!(index()))
+    )
+    .execute(&**pool)
+    .await
+    .ok()?;
+
+    Some(Redirect::to(uri!(index())))
 }
 
-#[launch]
-fn rocket() -> _ {
+#[rocket::main]
+async fn main() -> Result<()> {
+    let database_url = env::var("DATABASE_URL")?;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await?;
+
     rocket::build()
-        .manage(RwLock::new(TysiacGame {
-            player_names: ("Sheyne".into(), "Daniel".into(), "Alissa".into()),
-            round_scores: vec![],
-        }))
         .attach(Template::fairing())
+        .manage(pool)
         .mount("/", routes![index, add_scores])
+        .launch()
+        .await?;
+
+    Ok(())
 }
