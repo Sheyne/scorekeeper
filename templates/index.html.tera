@@ -1,0 +1,65 @@
+<table>
+    <tr>
+        <th>
+            {{player_names.0}}
+        </th>
+        <th>
+            {{player_names.1}}
+        </th>
+        <th>
+            {{player_names.2}}
+        </th>
+    </tr>
+
+    {% for scores in cumulative_round_scores-%}
+    <tr>
+        <td>{{ scores.0 }}</td>
+        <td>{{ scores.1 }}</td>
+        <td>{{ scores.2 }}</td>
+    </tr>
+    {%- endfor %}
+
+    <form method="POST" action="add-scores">
+        <tr>
+            <td><input type=text name="player-1-score" /></td>
+            <td><input type=text name="player-2-score" /></td>
+            <td><input type=text name="player-3-score" /></td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <input type="submit" />
+            </td>
+        </tr>
+    </form>
+</table>
+
+{% set width = 500 %}
+{% set height = 400 %}
+{% set num_scores = cumulative_round_scores | length %}
+{% set dx = width / num_scores %}
+
+<svg viewBox="0 0 {{ width }} {{ height }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" width={{width}} height={{height}}>
+    <line x1="1" y1="0" x2="1" y2="{{ height }}" stroke="grey" />
+    <line x1="{{width - 1}}" y1="0" x2="{{width - 1}}" y2="{{ height }}" stroke="grey" />
+    <line x1="0" y1="1" x2="{{width}}" y2="1" stroke="grey" />
+    <line x1="0" y1="{{height / 5}}" x2="{{width}}" y2="{{height / 5}}" stroke="grey" />
+    <line x1="0" y1="{{2 * height / 5}}" x2="{{width}}" y2="{{ 2 * height / 5}}" stroke="grey" />
+    <line x1="0" y1="{{3 * height / 5}}" x2="{{width}}" y2="{{ 3 * height / 5}}" stroke="grey" />
+    <line x1="0" y1="{{4 * height / 5}}" x2="{{width}}" y2="{{ 4 * height / 5}}" stroke="grey" />
+    <line x1="0" y1="{{ height - 1 }}" x2="{{width}}" y2="{{ height - 1 }}" stroke="grey" />
+    <path d="M 0,{{height}}
+             {% for scores in cumulative_round_scores -%}
+              L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.0 / 1000) }}
+             {%- endfor %}
+             " stroke="red" fill="transparent" stroke-width=2 />
+    <path d="M 0,{{height}}
+             {% for scores in cumulative_round_scores -%}
+             L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.1 / 1000) }}
+             {%- endfor %}
+             " stroke="green" fill="transparent" stroke-width=2 />
+    <path d="M 0,{{height}}
+             {% for scores in cumulative_round_scores -%}
+             L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.2 / 1000) }}
+             {%- endfor %}
+             " stroke="blue" fill="transparent" stroke-width=2 />
+</svg>
