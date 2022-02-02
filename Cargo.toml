@@ -10,6 +10,7 @@ rocket = "0.5.0-rc.1"
 serde = "*"
 sqlx = { version = "0.5", features = [ "runtime-tokio-native-tls" , "postgres" ] }
 anyhow = "*"
+tokio = "*"
 
 [dependencies.rocket_dyn_templates]
 version = "0.1.0-rc.1"

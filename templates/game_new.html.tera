@@ -1,0 +1,6 @@
+<form method="POST" action="new">
+<input type=text name="player-1-name" /><br/>
+<input type=text name="player-2-name" /><br/>
+<input type=text name="player-3-name" /><br/>
+<input type="submit" />
+</form>

@@ -1803,6 +1803,7 @@ dependencies = [
  "rocket_dyn_templates",
  "serde",
  "sqlx",
+ "tokio",
 ]
 
 [[package]]
