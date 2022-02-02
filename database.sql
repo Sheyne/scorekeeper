@@ -281,6 +281,7 @@ COPY public.tysiac_scores (game_id, index, player_1, player_2, player_3) FROM st
 11	188	0	130	70
 11	189	-115	20	5
 11	190	0	0	120
+12	190	50	0	50
 12	191	15	175	-135
 12	192	0	15	125
 12	193	0	110	110
