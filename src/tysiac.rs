@@ -173,7 +173,7 @@ pub async fn add_scores(
 ) -> Option<Redirect> {
     sqlx::query!(
         "INSERT INTO tysiac_scores (game_id, player_1, player_2, player_3 )
-     VALUES ($1, $2, $3, $4)",
+         VALUES ($1, $2, $3, $4)",
         game_id,
         player_scores.player_1_score.value(),
         player_scores.player_2_score.value(),

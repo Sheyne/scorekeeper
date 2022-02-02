@@ -4,9 +4,13 @@
 {% set dealer_index = num_scores % 3 %}
 {% set dx = width / num_scores %}
 
-<a href="{{game_id - 1}}">prev</a>
+{% if prev %}
+<a href="{{prev}}">prev</a>
+{% endif %}
 <a href="new">new</a>
-<a href="{{game_id + 1}}">next</a>
+{% if next %}
+<a href="{{next}}">next</a>
+{% endif %}
 
 <table>
     <tr>
