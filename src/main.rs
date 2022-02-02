@@ -66,7 +66,7 @@ impl<'r> FromFormField<'r> for MultipleOfFive {
 async fn get_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
     let game = sqlx::query!(
         "
-        SELECT id, player_1, player_2, player_3 FROM tysiac_games where id = $1
+        SELECT id, player_1, player_2, player_3 FROM tysiac_games WHERE id = $1
         ",
         game_id
     )
@@ -74,7 +74,7 @@ async fn get_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template
 
     let scores = sqlx::query!(
         "
-        SELECT player_1, player_2, player_3 FROM tysiac_scores where game_id = $1 order by index
+        SELECT player_1, player_2, player_3 FROM tysiac_scores WHERE game_id = $1 ORDER BY index
         ",
         game_id
     )
