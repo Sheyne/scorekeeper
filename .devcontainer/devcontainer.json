@@ -40,7 +40,7 @@
 	"forwardPorts": [8000],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "rustc --version",
+	"postCreateCommand": "sudo service postgresql start && sudo sudo -u postgres createdb vscode && sudo sudo -u postgres createuser vscode && psql -c \"alter user vscode password 'p';\"",
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
