@@ -138,7 +138,7 @@ pub async fn create(
     .await
     .ok()?;
 
-    Some(Redirect::to(format!("/tysiac/{game_id}")))
+    Some(Redirect::to(format!("/tysiac/{game_id}", game_id=result.id)))
 }
 
 #[get("/new")]
