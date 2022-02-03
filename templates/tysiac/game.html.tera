@@ -14,42 +14,33 @@
 
 <table>
     <tr>
-        <th>
-            {% if dealer_index == 0 %}
-            *
-            {% endif %}
-            {{player_names.0}}
+        {% for name in player_names %}
+
+        <th colspan="2">
+            {% if dealer_index == loop.index0 %}*{% endif %}
+            {{name}}
         </th>
-        <th>
-            {% if dealer_index == 1 %}
-            *
-            {% endif %}
-            {{player_names.1}}
-        </th>
-        <th>
-            {% if dealer_index == 2 %}
-            *
-            {% endif %}
-            {{player_names.2}}
-        </th>
+
+        {% endfor %}
     </tr>
 
     {% for scores in cumulative_round_scores-%}
     <tr>
-        <td>{{ scores.0 }}</td>
-        <td>{{ scores.1 }}</td>
-        <td>{{ scores.2 }}</td>
+        {% for delta in round_scores[loop.index0] %}
+        <td style="color:grey; text-align: right; color: {% if delta > 0 %}green{% elif delta < 0 %}red{% else %}grey{% endif %}">{% if delta > 0 %}+{% endif %}{{ delta }}</td>
+        <td>{{ scores[loop.index0] }}</td>
+        {% endfor %}
     </tr>
     {%- endfor %}
 
     <form method="POST" action="{{ game_id }}/add-scores">
         <tr>
-            <td><input type=text name="player-1-score" /></td>
-            <td><input type=text name="player-2-score" /></td>
-            <td><input type=text name="player-3-score" /></td>
+            <td colspan="2"><input type=text name="player-1-score" /></td>
+            <td colspan="2"><input type=text name="player-2-score" /></td>
+            <td colspan="2"><input type=text name="player-3-score" /></td>
         </tr>
         <tr>
-            <td colspan="3">
+            <td colspan="6">
                 <input type="submit" />
             </td>
         </tr>
@@ -66,19 +57,13 @@
     <line x1="0" y1="{{3 * height / 5}}" x2="{{width}}" y2="{{ 3 * height / 5}}" stroke="grey" />
     <line x1="0" y1="{{4 * height / 5}}" x2="{{width}}" y2="{{ 4 * height / 5}}" stroke="grey" />
     <line x1="0" y1="{{ height - 1 }}" x2="{{width}}" y2="{{ height - 1 }}" stroke="grey" />
+
+    {% for color in ["red", "green", "blue"]%}
+    {% set player = loop.index0 %}
     <path d="M 0,{{height}}
              {% for scores in cumulative_round_scores -%}
-              L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.0 / 1000) }}
+              L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores[player] / 1000) }}
              {%- endfor %}
-             " stroke="red" fill="transparent" stroke-width=2 />
-    <path d="M 0,{{height}}
-             {% for scores in cumulative_round_scores -%}
-             L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.1 / 1000) }}
-             {%- endfor %}
-             " stroke="green" fill="transparent" stroke-width=2 />
-    <path d="M 0,{{height}}
-             {% for scores in cumulative_round_scores -%}
-             L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores.2 / 1000) }}
-             {%- endfor %}
-             " stroke="blue" fill="transparent" stroke-width=2 />
+             " stroke="{{color}}" fill="transparent" stroke-width=2 />
+    {% endfor %}
 </svg>
