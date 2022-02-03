@@ -51,12 +51,10 @@
 <svg viewBox="0 0 {{ width }} {{ height }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" width={{width}} height={{height}}>
     <line x1="1" y1="0" x2="1" y2="{{ height }}" stroke="grey" />
     <line x1="{{width - 1}}" y1="0" x2="{{width - 1}}" y2="{{ height }}" stroke="grey" />
-    <line x1="0" y1="1" x2="{{width}}" y2="1" stroke="grey" />
-    <line x1="0" y1="{{height / 5}}" x2="{{width}}" y2="{{height / 5}}" stroke="grey" />
-    <line x1="0" y1="{{2 * height / 5}}" x2="{{width}}" y2="{{ 2 * height / 5}}" stroke="grey" />
-    <line x1="0" y1="{{3 * height / 5}}" x2="{{width}}" y2="{{ 3 * height / 5}}" stroke="grey" />
-    <line x1="0" y1="{{4 * height / 5}}" x2="{{width}}" y2="{{ 4 * height / 5}}" stroke="grey" />
-    <line x1="0" y1="{{ height - 1 }}" x2="{{width}}" y2="{{ height - 1 }}" stroke="grey" />
+    {% for line in range(start=0, end=6) %}
+    {% set y_pos = 1 + (height - 2) / 5 * line %}
+    <line x1="0" y1="{{y_pos}}" x2="{{width}}" y2="{{y_pos}}" stroke="grey" />
+    {% endfor %}
 
     {% for color in ["red", "green", "blue"]%}
     {% set player = loop.index0 %}
