@@ -138,7 +138,7 @@ pub async fn create(
     .await
     .ok()?;
 
-    Some(Redirect::to(uri!(index(result.id))))
+    Some(Redirect::to(format!("/tysiac/{game_id}")))
 }
 
 #[get("/new")]
@@ -183,5 +183,5 @@ pub async fn add_scores(
     .await
     .ok()?;
 
-    Some(Redirect::to(uri!(index(game_id))))
+    Some(Redirect::to(format!("/tysiac/{game_id}")))
 }
