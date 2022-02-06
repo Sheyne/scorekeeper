@@ -163,6 +163,12 @@ pub struct RoundScores {
     player_2_score: MultipleOf<5>,
     #[field(name = "player-3-score")]
     player_3_score: MultipleOf<5>,
+    #[field(name = "bid-winner")]
+    bid_winner: i32,
+    #[field(name = "winning-bid")]
+    winning_bid: i32,
+    #[field(name = "playing-bid")]
+    playing_bid: i32,
 }
 
 #[post("/<game_id>/add-scores", data = "<player_scores>")]
@@ -171,13 +177,31 @@ pub async fn add_scores(
     player_scores: Form<RoundScores>,
     pool: &State<Pool<Postgres>>,
 ) -> Option<Redirect> {
+    let winners_score = match player_scores.bid_winner {
+        1 => player_scores.player_1_score.value(),
+        2 => player_scores.player_2_score.value(),
+        3 => player_scores.player_3_score.value(),
+        _ => return None,
+    };
+
+    if winners_score.abs() != player_scores.playing_bid {
+        return None;
+    }
+
+    if player_scores.playing_bid < player_scores.winning_bid {
+        return None;
+    }
+
     sqlx::query!(
-        "INSERT INTO tysiac_scores (game_id, player_1, player_2, player_3 )
-         VALUES ($1, $2, $3, $4)",
+        "INSERT INTO tysiac_scores (game_id, player_1, player_2, player_3, bid_winner, winning_bid, played_bid )
+         VALUES ($1, $2, $3, $4, $5, $6, $7)",
         game_id,
         player_scores.player_1_score.value(),
         player_scores.player_2_score.value(),
         player_scores.player_3_score.value(),
+        player_scores.bid_winner,
+        player_scores.winning_bid,
+        player_scores.playing_bid,
     )
     .execute(&**pool)
     .await

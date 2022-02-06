@@ -35,15 +35,25 @@
 
     <form method="POST" action="{{ game_id }}/add-scores">
         <tr>
-            <td colspan="2"><input type=text name="player-1-score" /></td>
-            <td colspan="2"><input type=text name="player-2-score" /></td>
-            <td colspan="2"><input type=text name="player-3-score" /></td>
-        </tr>
-        <tr>
             <td colspan="6">
-                <input type="submit" />
+                <label for="winning-bid">Winning Bid: </label><input type="number" id="winning-bid" name="winning-bid" 
+                    onchange="if (Number(document.getElementById('playing-bid').value) < Number(this.value)) document.getElementById('playing-bid').value = this.value"
+                /><br/>
+                <label for="playing-bid">Playing Bid: </label><input type="number" id="playing-bid" name="playing-bid" /><br/>
             </td>
         </tr>
+        <tr><td colspan="6">Bid Winner: </td></tr>
+        <tr>
+            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="1" /></td>
+            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="2" /></td>
+            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="3" /></td>
+        </tr>
+        <tr>
+            {% for player in range(start=1, end=4) %}
+            <td colspan="2"><input type="number" name="player-{{ player }}-score" /></td>
+            {% endfor %}
+        </tr>
+        <tr><td colspan="6"><input type="submit" /></td></tr>
     </form>
 </table>
 
