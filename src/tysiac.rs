@@ -9,13 +9,32 @@ use serde::Serialize;
 use sqlx::{Pool, Postgres};
 use tokio::try_join;
 
+#[derive(sqlx::Type, Debug)]
+#[sqlx(type_name = "tysiac_player", rename_all = "lowercase")]
+#[derive(Serialize)]
+enum Player {
+    One,
+    Two,
+    Three,
+}
+
+#[derive(Serialize)]
+pub struct RoundScores {
+    player_1: i32,
+    player_2: i32,
+    player_3: i32,
+    bid_winner: Option<Player>,
+    winning_bid: Option<i32>,
+    played_bid: Option<i32>,
+}
+
 #[derive(Serialize)]
 struct Game {
     game_id: i32,
     next: Option<i32>,
     prev: Option<i32>,
     player_names: (String, String, String),
-    round_scores: Vec<(i32, i32, i32)>,
+    round_scores: Vec<RoundScores>,
 }
 
 #[derive(Serialize)]
@@ -24,7 +43,7 @@ struct GameContext<'a> {
     next: Option<i32>,
     prev: Option<i32>,
     player_names: &'a (String, String, String),
-    round_scores: &'a [(i32, i32, i32)],
+    round_scores: &'a [RoundScores],
     cumulative_round_scores: Vec<(i32, i32, i32)>,
 }
 
@@ -33,10 +52,10 @@ impl<'a> From<&'a Game> for GameContext<'a> {
         let cumulative_round_scores = game
             .round_scores
             .iter()
-            .scan((0, 0, 0), |(o1, o2, o3), (n1, n2, n3)| {
-                *o1 += *n1;
-                *o2 += *n2;
-                *o3 += *n3;
+            .scan((0, 0, 0), |(o1, o2, o3), scores| {
+                *o1 += scores.player_1;
+                *o2 += scores.player_2;
+                *o3 += scores.player_3;
                 Some((*o1, *o2, *o3))
             })
             .collect();
@@ -62,11 +81,11 @@ pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Templat
     )
     .fetch_one(&**pool);
 
-    let scores = sqlx::query!(
-        "SELECT player_1, player_2, player_3
+    let scores = sqlx::query_as!(RoundScores,
+        r#"SELECT player_1, player_2, player_3, bid_winner  as "bid_winner: _", winning_bid, played_bid
          FROM tysiac_scores
          WHERE game_id = $1
-         ORDER BY index",
+         ORDER BY index"#,
         game_id
     )
     .fetch_all(&**pool);
@@ -96,16 +115,7 @@ pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Templat
         prev: prev_game.map(|x| x.id),
         game_id,
         player_names: (game.player_1, game.player_2, game.player_3),
-        round_scores: scores
-            .into_iter()
-            .map(|r| {
-                (
-                    r.player_1.unwrap(),
-                    r.player_2.unwrap(),
-                    r.player_3.unwrap(),
-                )
-            })
-            .collect(),
+        round_scores: scores,
     };
 
     let context: GameContext = (&game).into();
@@ -156,7 +166,7 @@ pub async fn new() -> Template {
 }
 
 #[derive(FromForm)]
-pub struct RoundScores {
+pub struct FormRoundScores {
     #[field(name = "player-1-score")]
     player_1_score: MultipleOf<5>,
     #[field(name = "player-2-score")]
@@ -174,13 +184,13 @@ pub struct RoundScores {
 #[post("/<game_id>/add-scores", data = "<player_scores>")]
 pub async fn add_scores(
     game_id: i32,
-    player_scores: Form<RoundScores>,
+    player_scores: Form<FormRoundScores>,
     pool: &State<Pool<Postgres>>,
 ) -> Option<Redirect> {
-    let winners_score = match player_scores.bid_winner {
-        1 => player_scores.player_1_score.value(),
-        2 => player_scores.player_2_score.value(),
-        3 => player_scores.player_3_score.value(),
+    let (player, winners_score) = match player_scores.bid_winner {
+        1 => (Player::One, player_scores.player_1_score.value()),
+        2 => (Player::Two, player_scores.player_2_score.value()),
+        3 => (Player::Three, player_scores.player_3_score.value()),
         _ => return None,
     };
 
@@ -199,7 +209,7 @@ pub async fn add_scores(
         player_scores.player_1_score.value(),
         player_scores.player_2_score.value(),
         player_scores.player_3_score.value(),
-        player_scores.bid_winner,
+        player as _,
         player_scores.winning_bid,
         player_scores.playing_bid,
     )

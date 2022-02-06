@@ -1,4 +1,7 @@
 use rocket::form::{FromFormField, ValueField};
+use serde::Serialize;
+
+#[derive(Serialize)]
 pub struct MultipleOf<const N: i32>(i32);
 
 impl<const N: i32> MultipleOf<N> {

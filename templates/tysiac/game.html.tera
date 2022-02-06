@@ -26,7 +26,7 @@
 
     {% for scores in cumulative_round_scores-%}
     <tr>
-        {% for delta in round_scores[loop.index0] %}
+        {% for delta in [round_scores[loop.index0].player_1, round_scores[loop.index0].player_2, round_scores[loop.index0].player_3] %}
         <td style="color:grey; text-align: right; color: {% if delta > 0 %}green{% elif delta < 0 %}red{% else %}grey{% endif %}">{% if delta > 0 %}+{% endif %}{{ delta }}</td>
         <td>{{ scores[loop.index0] }}</td>
         {% endfor %}
