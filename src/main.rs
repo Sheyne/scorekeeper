@@ -63,6 +63,7 @@ async fn main() -> Result<()> {
                 tysiac::create_json,
                 tysiac::add_scores_json,
                 tysiac::stream,
+                tysiac::play_with_sse,
             ],
         )
         .launch()

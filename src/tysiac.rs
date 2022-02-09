@@ -236,6 +236,20 @@ pub async fn new() -> Template {
     )
 }
 
+#[get("/play-with-sse/<game_id>")]
+pub async fn play_with_sse(game_id: i32) -> Template {
+    Template::render(
+        "tysiac/play-with-sse",
+        &Game {
+            next: None,
+            prev: None,
+            game_id,
+            player_names: ("".into(), "".into(), "".into()),
+            round_scores: vec![],
+        },
+    )
+}
+
 #[derive(FromForm)]
 pub struct FormRoundScores {
     #[field(name = "player-1-score")]

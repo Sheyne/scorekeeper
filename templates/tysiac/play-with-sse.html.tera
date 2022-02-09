@@ -1,0 +1,29 @@
+
+<table id="table">
+</table>
+
+<script>
+    const gameId = {{game_id}};
+    const evtSource = new EventSource("/tysiac/events");
+    const table = document.getElementById("table");
+
+    evtSource.onmessage = function(event) {
+        console.log(JSON.parse(event.data));
+
+        const oReq = new XMLHttpRequest();
+        oReq.overrideMimeType("application/json");
+        oReq.addEventListener("load", (newData)=>{
+            const data = JSON.parse(oReq.responseText);
+            console.log(data);
+
+            table.innerHTML = "<tr><th>"+data.player_names[0]+"</th><th>"+data.player_names[1]+"</th><th>"+data.player_names[2]+"</th></tr>";
+
+            for (const row of data.round_scores) {
+                table.innerHTML += "<tr><td>" + row.player_1 + "</td><td>" + row.player_2 + "</td><td>" + row.player_3 + "</td><tr>"
+            }
+        });
+        oReq.open("GET", "/tysiac/json/" + gameId);
+        oReq.send();
+
+    };
+</script>
