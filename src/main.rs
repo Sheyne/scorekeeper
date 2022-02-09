@@ -3,6 +3,7 @@ extern crate rocket;
 use anyhow::Result;
 use rocket::State;
 use rocket_dyn_templates::Template;
+use rocket_okapi::openapi_get_routes;
 use serde::Serialize;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use std::env;
@@ -54,14 +55,19 @@ async fn main() -> Result<()> {
         .mount("/", routes![index])
         .mount(
             "/tysiac",
+            openapi_get_routes![
+                tysiac::get_game_data,
+                tysiac::add_scores_json,
+                tysiac::create_json,
+            ],
+        )
+        .mount(
+            "/tysiac",
             routes![
                 tysiac::index,
                 tysiac::new,
                 tysiac::create,
                 tysiac::add_scores,
-                tysiac::get_game_data,
-                tysiac::create_json,
-                tysiac::add_scores_json,
                 tysiac::stream,
                 tysiac::play_with_sse,
             ],

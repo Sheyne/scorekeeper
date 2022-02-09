@@ -1,7 +1,8 @@
 use rocket::form::{FromFormField, ValueField};
+use rocket_okapi::okapi::schemars::{self, JsonSchema};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct MultipleOf<const N: i32>(i32);
 
 impl<const N: i32> MultipleOf<N> {

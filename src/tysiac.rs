@@ -9,6 +9,10 @@ use rocket::{
     State,
 };
 use rocket_dyn_templates::Template;
+use rocket_okapi::{
+    okapi::schemars::{self, JsonSchema},
+    openapi,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 use tokio::{
@@ -16,7 +20,7 @@ use tokio::{
     try_join,
 };
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, JsonSchema)]
 enum TysiacEvent {
     ScoreUpdated,
     NewGame,
@@ -47,7 +51,7 @@ pub fn stream(context: &State<TysiacContext>) -> EventStream![] {
     }
 }
 
-#[derive(sqlx::Type, Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(sqlx::Type, Debug, Serialize, Deserialize, JsonSchema, Clone, Copy)]
 #[sqlx(type_name = "tysiac_player", rename_all = "lowercase")]
 enum Player {
     One,
@@ -55,7 +59,7 @@ enum Player {
     Three,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, JsonSchema)]
 pub struct RoundScores {
     player_1: i32,
     player_2: i32,
@@ -65,7 +69,7 @@ pub struct RoundScores {
     played_bid: Option<i32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct Game {
     game_id: i32,
     next: Option<i32>,
@@ -74,7 +78,7 @@ pub struct Game {
     round_scores: Vec<RoundScores>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 struct GameContext<'a> {
     game_id: i32,
     next: Option<i32>,
@@ -157,6 +161,7 @@ async fn load_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Game> {
     Some(game)
 }
 
+#[openapi]
 #[get("/json/<game_id>", format = "json")]
 pub async fn get_game_data(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Json<Game>> {
     let game = load_game(game_id, pool).await?;
@@ -170,7 +175,7 @@ pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Templat
     Some(Template::render("tysiac/game", &context))
 }
 
-#[derive(FromForm, Deserialize)]
+#[derive(FromForm, Deserialize, JsonSchema)]
 pub struct PlayerNames<'a> {
     #[field(name = "player-1-name")]
     player_1_name: &'a str,
@@ -213,6 +218,7 @@ pub async fn create(
     )))
 }
 
+#[openapi]
 #[post("/json/new", data = "<player_names>", format = "json")]
 pub async fn create_json(
     player_names: Json<PlayerNames<'_>>,
@@ -250,7 +256,7 @@ pub async fn play_with_sse(game_id: i32) -> Template {
     )
 }
 
-#[derive(FromForm)]
+#[derive(FromForm, JsonSchema)]
 pub struct FormRoundScores {
     #[field(name = "player-1-score")]
     player_1_score: MultipleOf<5>,
@@ -376,6 +382,7 @@ pub async fn add_scores(
     Some(Redirect::to(uri!("/tysiac", index(game_id))))
 }
 
+#[openapi]
 #[post(
     "/json/<game_id>/add-scores",
     data = "<player_scores>",
