@@ -38,19 +38,6 @@ impl Default for TysiacContext {
     }
 }
 
-#[get("/events")]
-pub fn stream(context: &State<TysiacContext>) -> EventStream![] {
-    let mut receiver = context.sender.subscribe();
-
-    EventStream! {
-        loop {
-            if let Ok(event) = receiver.recv().await {
-                yield Event::json(&event);
-            }
-        }
-    }
-}
-
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, JsonSchema, Clone, Copy)]
 #[sqlx(type_name = "tysiac_player", rename_all = "lowercase")]
 enum Player {
@@ -161,20 +148,6 @@ async fn load_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Game> {
     Some(game)
 }
 
-#[openapi]
-#[get("/json/<game_id>", format = "json")]
-pub async fn get_game_data(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Json<Game>> {
-    let game = load_game(game_id, pool).await?;
-    Some(Json(game))
-}
-
-#[get("/<game_id>")]
-pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
-    let game = load_game(game_id, pool).await?;
-    let context: GameContext = (&game).into();
-    Some(Template::render("tysiac/game", &context))
-}
-
 #[derive(FromForm, Deserialize, JsonSchema)]
 pub struct PlayerNames<'a> {
     #[field(name = "player-1-name")]
@@ -204,56 +177,6 @@ async fn create_game(
     let _ = context.sender.clone().send(TysiacEvent::NewGame);
 
     Some(result.id)
-}
-
-#[post("/new", data = "<player_names>")]
-pub async fn create(
-    player_names: Form<PlayerNames<'_>>,
-    pool: &State<Pool<Postgres>>,
-    context: &State<TysiacContext>,
-) -> Option<Redirect> {
-    Some(Redirect::to(uri!(
-        "/tysiac",
-        index(create_game(&player_names, pool, context).await?)
-    )))
-}
-
-#[openapi]
-#[post("/json/new", data = "<player_names>", format = "json")]
-pub async fn create_json(
-    player_names: Json<PlayerNames<'_>>,
-    pool: &State<Pool<Postgres>>,
-    context: &State<TysiacContext>,
-) -> Option<Json<i32>> {
-    Some(Json(create_game(&player_names, pool, context).await?))
-}
-
-#[get("/new")]
-pub async fn new() -> Template {
-    Template::render(
-        "tysiac/new",
-        &Game {
-            next: None,
-            prev: None,
-            game_id: 0,
-            player_names: ("".into(), "".into(), "".into()),
-            round_scores: vec![],
-        },
-    )
-}
-
-#[get("/play-with-sse/<game_id>")]
-pub async fn play_with_sse(game_id: i32) -> Template {
-    Template::render(
-        "tysiac/play-with-sse",
-        &Game {
-            next: None,
-            prev: None,
-            game_id,
-            player_names: ("".into(), "".into(), "".into()),
-            round_scores: vec![],
-        },
-    )
 }
 
 #[derive(FromForm, JsonSchema)]
@@ -370,25 +293,39 @@ async fn do_add_scores(
     Some(())
 }
 
-#[post("/<game_id>/add-scores", data = "<player_scores>")]
-pub async fn add_scores(
-    game_id: i32,
-    player_scores: Form<FormRoundScores>,
-    pool: &State<Pool<Postgres>>,
-    context: &State<TysiacContext>,
-) -> Option<Redirect> {
-    do_add_scores(game_id, &player_scores, pool, context).await?;
+#[get("/events", format = "json")]
+pub fn events(context: &State<TysiacContext>) -> EventStream![] {
+    let mut receiver = context.sender.subscribe();
 
-    Some(Redirect::to(uri!("/tysiac", index(game_id))))
+    EventStream! {
+        loop {
+            if let Ok(event) = receiver.recv().await {
+                yield Event::json(&event);
+            }
+        }
+    }
 }
 
 #[openapi]
-#[post(
-    "/json/<game_id>/add-scores",
-    data = "<player_scores>",
-    format = "json"
-)]
-pub async fn add_scores_json(
+#[get("/<game_id>", format = "json")]
+pub async fn load(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Json<Game>> {
+    let game = load_game(game_id, pool).await?;
+    Some(Json(game))
+}
+
+#[openapi]
+#[put("/new", data = "<player_names>", format = "json")]
+pub async fn new(
+    player_names: Json<PlayerNames<'_>>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Json<i32>> {
+    Some(Json(create_game(&player_names, pool, context).await?))
+}
+
+#[openapi]
+#[put("/<game_id>/add-scores", data = "<player_scores>", format = "json")]
+pub async fn add_scores(
     game_id: i32,
     player_scores: Json<RoundScores>,
     pool: &State<Pool<Postgres>>,
@@ -403,4 +340,71 @@ pub async fn add_scores_json(
     .await?;
 
     Some(Json(()))
+}
+
+#[get("/<game_id>", format = "html", rank = 1)]
+pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
+    let game = load_game(game_id, pool).await?;
+    let context: GameContext = (&game).into();
+    Some(Template::render("tysiac/game", &context))
+}
+
+#[get("/new", format = "html")]
+pub async fn new_html() -> Template {
+    Template::render(
+        "tysiac/new",
+        &Game {
+            next: None,
+            prev: None,
+            game_id: 0,
+            player_names: ("".into(), "".into(), "".into()),
+            round_scores: vec![],
+        },
+    )
+}
+
+#[get("/play-with-sse/<game_id>", format = "html")]
+pub async fn play_with_sse(game_id: i32) -> Template {
+    Template::render(
+        "tysiac/play-with-sse",
+        &Game {
+            next: None,
+            prev: None,
+            game_id,
+            player_names: ("".into(), "".into(), "".into()),
+            round_scores: vec![],
+        },
+    )
+}
+
+#[post(
+    "/new",
+    data = "<player_names>",
+    format = "application/x-www-form-urlencoded"
+)]
+pub async fn create_html(
+    player_names: Form<PlayerNames<'_>>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Redirect> {
+    Some(Redirect::to(uri!(
+        "/tysiac",
+        index(create_game(&player_names, pool, context).await?)
+    )))
+}
+
+#[post(
+    "/<game_id>/add-scores",
+    data = "<player_scores>",
+    format = "application/x-www-form-urlencoded"
+)]
+pub async fn add_scores_html(
+    game_id: i32,
+    player_scores: Form<FormRoundScores>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Redirect> {
+    do_add_scores(game_id, &player_scores, pool, context).await?;
+
+    Some(Redirect::to(uri!("/tysiac", index(game_id))))
 }

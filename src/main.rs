@@ -55,20 +55,16 @@ async fn main() -> Result<()> {
         .mount("/", routes![index])
         .mount(
             "/tysiac",
-            openapi_get_routes![
-                tysiac::get_game_data,
-                tysiac::add_scores_json,
-                tysiac::create_json,
-            ],
+            openapi_get_routes![tysiac::load, tysiac::add_scores, tysiac::new,],
         )
         .mount(
             "/tysiac",
             routes![
+                tysiac::events,
                 tysiac::index,
-                tysiac::new,
-                tysiac::create,
-                tysiac::add_scores,
-                tysiac::stream,
+                tysiac::new_html,
+                tysiac::create_html,
+                tysiac::add_scores_html,
                 tysiac::play_with_sse,
             ],
         )
