@@ -28,17 +28,22 @@ CREATE SEQUENCE public.tysiac_games_id_seq
 
 ALTER SEQUENCE public.tysiac_games_id_seq OWNED BY public.tysiac_games.id;
 
+CREATE TYPE tysiac_player AS ENUM ('one', 'two', 'three');
+
 
 --
 -- Name: tysiac_scores; Type: TABLE; Schema: public; Owner: iedftdnfgxrqgs
 --
 
 CREATE TABLE public.tysiac_scores (
-    game_id integer,
+    game_id integer NOT NULL,
     index integer NOT NULL,
-    player_1 integer,
-    player_2 integer,
-    player_3 integer
+    player_1 integer NOT NULL,
+    player_2 integer NOT NULL,
+    player_3 integer NOT NULL,
+    bid_winner tysiac_player,
+    winning_bid integer,
+    played_bid integer
 );
 
 
