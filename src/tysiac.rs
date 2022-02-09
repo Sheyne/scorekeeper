@@ -1,24 +1,61 @@
 use crate::common::MultipleOf;
 use rocket::{
     form::{Form, FromForm},
-    response::Redirect,
+    response::{
+        stream::{Event, EventStream},
+        Redirect,
+    },
+    serde::json::Json,
     State,
 };
 use rocket_dyn_templates::Template;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
-use tokio::try_join;
+use tokio::{
+    sync::broadcast::{self, Sender},
+    try_join,
+};
 
-#[derive(sqlx::Type, Debug)]
+#[derive(Clone, Serialize)]
+enum TysiacEvent {
+    ScoreUpdated,
+    NewGame,
+}
+
+pub struct TysiacContext {
+    sender: Sender<TysiacEvent>,
+}
+
+impl Default for TysiacContext {
+    fn default() -> Self {
+        let (s, _) = broadcast::channel(16);
+
+        Self { sender: s }
+    }
+}
+
+#[get("/events")]
+pub fn stream(context: &State<TysiacContext>) -> EventStream![] {
+    let mut receiver = context.sender.subscribe();
+
+    EventStream! {
+        loop {
+            if let Ok(event) = receiver.recv().await {
+                yield Event::json(&event);
+            }
+        }
+    }
+}
+
+#[derive(sqlx::Type, Debug, Serialize, Deserialize, Clone, Copy)]
 #[sqlx(type_name = "tysiac_player", rename_all = "lowercase")]
-#[derive(Serialize)]
 enum Player {
     One,
     Two,
     Three,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct RoundScores {
     player_1: i32,
     player_2: i32,
@@ -29,7 +66,7 @@ pub struct RoundScores {
 }
 
 #[derive(Serialize)]
-struct Game {
+pub struct Game {
     game_id: i32,
     next: Option<i32>,
     prev: Option<i32>,
@@ -71,8 +108,7 @@ impl<'a> From<&'a Game> for GameContext<'a> {
     }
 }
 
-#[get("/<game_id>")]
-pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
+async fn load_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Game> {
     let game = sqlx::query!(
         "SELECT id, player_1, player_2, player_3
          FROM tysiac_games
@@ -118,11 +154,23 @@ pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Templat
         round_scores: scores,
     };
 
+    Some(game)
+}
+
+#[get("/json/<game_id>", format = "json")]
+pub async fn get_game_data(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Json<Game>> {
+    let game = load_game(game_id, pool).await?;
+    Some(Json(game))
+}
+
+#[get("/<game_id>")]
+pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
+    let game = load_game(game_id, pool).await?;
     let context: GameContext = (&game).into();
     Some(Template::render("tysiac/game", &context))
 }
 
-#[derive(FromForm)]
+#[derive(FromForm, Deserialize)]
 pub struct PlayerNames<'a> {
     #[field(name = "player-1-name")]
     player_1_name: &'a str,
@@ -132,11 +180,11 @@ pub struct PlayerNames<'a> {
     player_3_name: &'a str,
 }
 
-#[post("/new", data = "<player_names>")]
-pub async fn create(
-    player_names: Form<PlayerNames<'_>>,
+async fn create_game(
+    player_names: &PlayerNames<'_>,
     pool: &State<Pool<Postgres>>,
-) -> Option<Redirect> {
+    context: &State<TysiacContext>,
+) -> Option<i32> {
     let result = sqlx::query!(
         "INSERT INTO tysiac_games (player_1, player_2, player_3)
          VALUES ($1, $2, $3) RETURNING id",
@@ -148,7 +196,30 @@ pub async fn create(
     .await
     .ok()?;
 
-    Some(Redirect::to(uri!("/tysiac", index(result.id))))
+    let _ = context.sender.clone().send(TysiacEvent::NewGame);
+
+    Some(result.id)
+}
+
+#[post("/new", data = "<player_names>")]
+pub async fn create(
+    player_names: Form<PlayerNames<'_>>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Redirect> {
+    Some(Redirect::to(uri!(
+        "/tysiac",
+        index(create_game(&player_names, pool, context).await?)
+    )))
+}
+
+#[post("/json/new", data = "<player_names>", format = "json")]
+pub async fn create_json(
+    player_names: Json<PlayerNames<'_>>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Json<i32>> {
+    Some(Json(create_game(&player_names, pool, context).await?))
 }
 
 #[get("/new")]
@@ -181,12 +252,27 @@ pub struct FormRoundScores {
     playing_bid: i32,
 }
 
-#[post("/<game_id>/add-scores", data = "<player_scores>")]
-pub async fn add_scores(
+impl TryFrom<&RoundScores> for FormRoundScores {
+    type Error = ();
+
+    fn try_from(value: &RoundScores) -> Result<Self, Self::Error> {
+        Ok(Self {
+            player_1_score: value.player_1.try_into()?,
+            player_2_score: value.player_2.try_into()?,
+            player_3_score: value.player_3.try_into()?,
+            bid_winner: value.bid_winner.ok_or(())? as i32,
+            winning_bid: value.winning_bid.ok_or(())?,
+            playing_bid: value.played_bid.ok_or(())?,
+        })
+    }
+}
+
+async fn do_add_scores(
     game_id: i32,
-    player_scores: Form<FormRoundScores>,
+    player_scores: &FormRoundScores,
     pool: &State<Pool<Postgres>>,
-) -> Option<Redirect> {
+    context: &State<TysiacContext>,
+) -> Option<()> {
     let (player, winners_score) = match player_scores.bid_winner {
         1 => (Player::One, player_scores.player_1_score.value()),
         2 => (Player::Two, player_scores.player_2_score.value()),
@@ -214,8 +300,43 @@ pub async fn add_scores(
         player_scores.playing_bid,
     )
     .execute(&**pool)
-    .await
-    .ok()?;
+    .await.ok()?;
+
+    let _ = context.sender.clone().send(TysiacEvent::ScoreUpdated);
+
+    Some(())
+}
+
+#[post("/<game_id>/add-scores", data = "<player_scores>")]
+pub async fn add_scores(
+    game_id: i32,
+    player_scores: Form<FormRoundScores>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Redirect> {
+    do_add_scores(game_id, &player_scores, pool, context).await?;
 
     Some(Redirect::to(uri!("/tysiac", index(game_id))))
+}
+
+#[post(
+    "/json/<game_id>/add-scores",
+    data = "<player_scores>",
+    format = "json"
+)]
+pub async fn add_scores_json(
+    game_id: i32,
+    player_scores: Json<RoundScores>,
+    pool: &State<Pool<Postgres>>,
+    context: &State<TysiacContext>,
+) -> Option<Json<()>> {
+    do_add_scores(
+        game_id,
+        &((&*player_scores).try_into().ok()?),
+        pool,
+        context,
+    )
+    .await?;
+
+    Some(Json(()))
 }

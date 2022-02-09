@@ -6,6 +6,7 @@ use rocket_dyn_templates::Template;
 use serde::Serialize;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use std::env;
+use tysiac::TysiacContext;
 
 mod common;
 mod tysiac;
@@ -44,9 +45,12 @@ async fn main() -> Result<()> {
         .connect(&database_url)
         .await?;
 
+    let tysiac_context: TysiacContext = Default::default();
+
     rocket::build()
         .attach(Template::fairing())
         .manage(pool)
+        .manage(tysiac_context)
         .mount("/", routes![index])
         .mount(
             "/tysiac",
@@ -54,7 +58,11 @@ async fn main() -> Result<()> {
                 tysiac::index,
                 tysiac::new,
                 tysiac::create,
-                tysiac::add_scores
+                tysiac::add_scores,
+                tysiac::get_game_data,
+                tysiac::create_json,
+                tysiac::add_scores_json,
+                tysiac::stream,
             ],
         )
         .launch()
