@@ -252,6 +252,16 @@ pub struct FormRoundScores {
     playing_bid: i32,
 }
 
+impl FormRoundScores {
+    fn for_player(&self, player: Player) -> i32 {
+        match player {
+            Player::One => self.player_1_score.value(),
+            Player::Two => self.player_2_score.value(),
+            Player::Three => self.player_3_score.value(),
+        }
+    }
+}
+
 impl TryFrom<&RoundScores> for FormRoundScores {
     type Error = ();
 
@@ -273,14 +283,47 @@ async fn do_add_scores(
     pool: &State<Pool<Postgres>>,
     context: &State<TysiacContext>,
 ) -> Option<()> {
-    let (player, winners_score) = match player_scores.bid_winner {
-        1 => (Player::One, player_scores.player_1_score.value()),
-        2 => (Player::Two, player_scores.player_2_score.value()),
-        3 => (Player::Three, player_scores.player_3_score.value()),
+    let player = match player_scores.bid_winner {
+        1 => Player::One,
+        2 => Player::Two,
+        3 => Player::Three,
         _ => return None,
     };
 
-    if winners_score.abs() != player_scores.playing_bid {
+    let winners_score = player_scores.for_player(player);
+
+    let sums = sqlx::query!(
+        "SELECT sum(player_1) as player_1, sum(player_2) as player_2, sum(player_3) as player_3 FROM tysiac_scores WHERE game_id = $1", game_id
+    )
+    .fetch_one(&**pool)
+    .await
+    .ok()?;
+
+    let p1_sum = sums
+        .player_1
+        .map(|x| (x as i32) + player_scores.player_1_score.value());
+    let p2_sum = sums
+        .player_2
+        .map(|x| (x as i32) + player_scores.player_2_score.value());
+    let p3_sum = sums
+        .player_3
+        .map(|x| (x as i32) + player_scores.player_3_score.value());
+
+    let (winners_sum, loser_sums) = match player {
+        Player::One => (p1_sum, [p2_sum, p3_sum]),
+        Player::Two => (p2_sum, [p1_sum, p3_sum]),
+        Player::Three => (p3_sum, [p1_sum, p2_sum]),
+    };
+
+    if loser_sums.iter().filter_map(|x| *x).any(|x| x > 880) {
+        return None;
+    }
+
+    if winners_score.abs() != player_scores.playing_bid && winners_sum != Some(880) {
+        return None;
+    }
+
+    if winners_sum > Some(880) && winners_sum != Some(1000) {
         return None;
     }
 
