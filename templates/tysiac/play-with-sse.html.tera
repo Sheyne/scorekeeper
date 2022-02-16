@@ -22,7 +22,7 @@
                 table.innerHTML += "<tr><td>" + row.player_1 + "</td><td>" + row.player_2 + "</td><td>" + row.player_3 + "</td><tr>"
             }
         });
-        oReq.open("GET", "/tysiac/json/" + gameId);
+        oReq.open("GET", "/tysiac/" + gameId);
         oReq.send();
 
     };
