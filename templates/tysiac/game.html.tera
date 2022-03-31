@@ -4,6 +4,11 @@
 {% set dealer_index = num_scores % 3 %}
 {% set dx = width / num_scores %}
 
+{% set under_height = 0 %}
+{% if min_score < 0 %}
+    {% set under_height = -1 * height * min_score / 1000 + 10 %}
+{% endif %}
+
 {% if prev %}
 <a href="{{prev}}">prev</a>
 {% endif %}
@@ -58,7 +63,7 @@
 </table>
 
 
-<svg viewBox="0 0 {{ width }} {{ height }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" width={{width}} height={{height}}>
+<svg viewBox="0 0 {{ width }} {{ height + under_height }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" width={{width}} height={{height + under_height}}>
     <line x1="1" y1="0" x2="1" y2="{{ height }}" stroke="grey" />
     <line x1="{{width - 1}}" y1="0" x2="{{width - 1}}" y2="{{ height }}" stroke="grey" />
     {% for line in range(start=0, end=6) %}

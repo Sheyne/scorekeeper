@@ -74,6 +74,7 @@ struct GameContext<'a> {
     player_names: &'a (String, String, String),
     round_scores: &'a [RoundScores],
     cumulative_round_scores: Vec<(i32, i32, i32)>,
+    min_score: i32,
 }
 
 impl<'a> From<&'a Game> for GameContext<'a> {
@@ -89,6 +90,13 @@ impl<'a> From<&'a Game> for GameContext<'a> {
             })
             .collect();
 
+        let min_score = game
+            .round_scores
+            .iter()
+            .flat_map(|x| [x.player_1, x.player_2, x.player_3])
+            .min()
+            .unwrap_or(0);
+
         Self {
             next: game.next,
             prev: game.prev,
@@ -96,6 +104,7 @@ impl<'a> From<&'a Game> for GameContext<'a> {
             player_names: &game.player_names,
             round_scores: &game.round_scores,
             cumulative_round_scores,
+            min_score,
         }
     }
 }
