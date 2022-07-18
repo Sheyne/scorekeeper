@@ -3,10 +3,6 @@ extern crate rocket;
 use anyhow::Result;
 use rocket::State;
 use rocket_dyn_templates::Template;
-use rocket_okapi::{
-    openapi_get_routes,
-    swagger_ui::{make_swagger_ui, SwaggerUIConfig},
-};
 use serde::Serialize;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use std::env;
@@ -58,11 +54,10 @@ async fn main() -> Result<()> {
         .mount("/", routes![index])
         .mount(
             "/tysiac",
-            openapi_get_routes![tysiac::load, tysiac::add_scores, tysiac::new,],
-        )
-        .mount(
-            "/tysiac",
             routes![
+                tysiac::load,
+                tysiac::add_scores,
+                tysiac::new,
                 tysiac::events,
                 tysiac::index,
                 tysiac::new_html,
@@ -70,13 +65,6 @@ async fn main() -> Result<()> {
                 tysiac::add_scores_html,
                 tysiac::play_with_sse,
             ],
-        )
-        .mount(
-            "/tysiac/swagger-ui/",
-            make_swagger_ui(&SwaggerUIConfig {
-                url: "../openapi.json".to_owned(),
-                ..Default::default()
-            }),
         )
         .launch()
         .await?;
