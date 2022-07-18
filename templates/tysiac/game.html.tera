@@ -41,10 +41,10 @@
             <tr>
                 <td colspan="6">
                     <label for="winning-bid">Winning Bid: </label><input type="number" id="winning-bid"
-                        name="winning-bid"
+                        name="winning-bid" step="5"
                         onchange="if (Number(document.getElementById('playing-bid').value) < Number(this.value)) document.getElementById('playing-bid').value = this.value" /><br />
                     <label for="playing-bid">Playing Bid: </label><input type="number" id="playing-bid"
-                        name="playing-bid" /><br />
+                        name="playing-bid" step="5" /><br />
                 </td>
             </tr>
             <tr>
@@ -57,7 +57,7 @@
             </tr>
             <tr>
                 {% for player in range(start=1, end=4) %}
-                <td colspan="2"><input type="number" name="player-{{ player }}-score" /></td>
+                <td colspan="2"><input type="number" name="player-{{ player }}-score" step="5" /></td>
                 {% endfor %}
             </tr>
             <tr>
