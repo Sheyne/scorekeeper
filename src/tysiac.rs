@@ -6,7 +6,6 @@ use rocket::{
         error::ErrorKind, Error as RocketFormError, Form, FromForm, FromFormField,
         Result as RocketResult, ValueField,
     },
-    http::Status,
     response::{
         stream::{Event, EventStream},
         Redirect,
@@ -393,21 +392,30 @@ async fn do_edit_scores(
         |FormEditRoundScores {
              index,
              scores,
-             delete: _,
+             delete,
          }| {
-            sqlx::query!(
-                "UPDATE tysiac_scores
-            SET player_1=$1, player_2=$2, player_3=$3, bid_winner=$4, winning_bid=$5, played_bid=$6
-            WHERE index=$7;",
-                scores.player_1_score.value(),
-                scores.player_2_score.value(),
-                scores.player_3_score.value(),
-                scores.bid_winner as _,
-                scores.winning_bid,
-                scores.playing_bid,
-                index,
-            )
-            .execute(&**pool)
+            if *delete {
+                sqlx::query!(
+                    "DELETE FROM tysiac_scores
+                WHERE index=$1;",
+                    index,
+                )
+                .execute(&**pool)
+            } else {
+                sqlx::query!(
+                    "UPDATE tysiac_scores
+                SET player_1=$1, player_2=$2, player_3=$3, bid_winner=$4, winning_bid=$5, played_bid=$6
+                WHERE index=$7;",
+                    scores.player_1_score.value(),
+                    scores.player_2_score.value(),
+                    scores.player_3_score.value(),
+                    scores.bid_winner as _,
+                    scores.winning_bid,
+                    scores.playing_bid,
+                    index,
+                )
+                .execute(&**pool)
+            }
         },
     ))
     .await
