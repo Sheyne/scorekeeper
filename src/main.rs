@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
 
     let tysiac_context: TysiacContext = Default::default();
 
-    rocket::build()
+    let _ = rocket::build()
         .attach(Template::fairing())
         .manage(pool)
         .manage(tysiac_context)

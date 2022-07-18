@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = "*"
-sqlx = { version = "0.5", features = [ "runtime-tokio-native-tls" , "postgres" ] }
-anyhow = "*"
-tokio = "*"
-thiserror = "*"
-rocket_okapi = { version = "0.8.0-alpha-1", features = ["swagger", "rapidoc"] }
+serde = "1.0.139"
+sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "postgres" ] }
+anyhow = "1.0.58"
+tokio = "1.20.0"
+thiserror = "1.0.31"
+rocket_okapi = { version = "0.8.0-rc.2", features = ["swagger", "rapidoc"] }
 
 [dependencies.rocket_dyn_templates]
 version = "0.1.0-rc.2"
