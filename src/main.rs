@@ -64,10 +64,12 @@ async fn main() -> Result<()> {
             "/tysiac",
             routes![
                 tysiac::events,
+                tysiac::edit,
                 tysiac::index,
                 tysiac::new_html,
                 tysiac::create_html,
                 tysiac::add_scores_html,
+                tysiac::edit_scores_post,
                 tysiac::play_with_sse,
             ],
         )

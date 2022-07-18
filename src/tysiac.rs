@@ -1,6 +1,11 @@
+use std::borrow::Cow;
+
 use crate::common::{MultipleOf, MultipleOfError};
 use rocket::{
-    form::{Form, FromForm},
+    form::{
+        error::ErrorKind, Error as RocketFormError, Form, FromForm, FromFormField,
+        Result as RocketResult, ValueField,
+    },
     response::{
         stream::{Event, EventStream},
         Redirect,
@@ -47,8 +52,36 @@ enum Player {
     Three = 3,
 }
 
+impl<'v> FromFormField<'v> for Player {
+    fn from_value(field: ValueField<'v>) -> RocketResult<'v, Self> {
+        let i: i32 = field.value.parse().unwrap_or_else(|_| match field.value {
+            "One" => 1,
+            "Two" => 2,
+            "Three" => 3,
+            _ => -1, // Invalid player,
+        });
+        i.try_into().map_err(|_| {
+            RocketFormError::from(ErrorKind::Validation(Cow::Borrowed("Not a valid player"))).into()
+        })
+    }
+}
+
+impl TryFrom<i32> for Player {
+    fn try_from(num: i32) -> Result<Self> {
+        Ok(match num {
+            1 => Player::One,
+            2 => Player::Two,
+            3 => Player::Three,
+            n => Err(ApiError::NotAValidPlayer { n })?,
+        })
+    }
+
+    type Error = ApiError;
+}
+
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct RoundScores {
+    index: i32,
     player_1: i32,
     player_2: i32,
     player_3: i32,
@@ -142,7 +175,7 @@ async fn load_game(game_id: i32, pool: &State<Pool<Postgres>>) -> Result<Game> {
     .fetch_one(&**pool);
 
     let scores = sqlx::query_as!(RoundScores,
-        r#"SELECT player_1, player_2, player_3, bid_winner  as "bid_winner: _", winning_bid, played_bid
+        r#"SELECT index, player_1, player_2, player_3, bid_winner  as "bid_winner: _", winning_bid, played_bid
          FROM tysiac_scores
          WHERE game_id = $1
          ORDER BY index"#,
@@ -219,11 +252,24 @@ pub struct FormRoundScores {
     #[field(name = "player-3-score")]
     player_3_score: MultipleOf<5>,
     #[field(name = "bid-winner")]
-    bid_winner: i32,
+    bid_winner: Player,
     #[field(name = "winning-bid")]
     winning_bid: i32,
     #[field(name = "playing-bid")]
     playing_bid: i32,
+}
+
+#[derive(FromForm)]
+pub struct FormEditRoundScores {
+    index: i32,
+    scores: FormRoundScores,
+    delete: bool,
+}
+
+#[derive(FromForm)]
+pub struct FormEditAllScores {
+    all_scores: Vec<FormEditRoundScores>,
+    password: String,
 }
 
 impl FormRoundScores {
@@ -233,6 +279,34 @@ impl FormRoundScores {
             Player::Two => self.player_2_score.value(),
             Player::Three => self.player_3_score.value(),
         }
+    }
+
+    fn validate_scores(&self, p1_sum: i32, p2_sum: i32, p3_sum: i32) -> Result<()> {
+        let winning_player = self.bid_winner;
+        let winners_score = self.for_player(winning_player);
+        let (winners_sum, loser_sums) = match winning_player {
+            Player::One => (p1_sum, [p2_sum, p3_sum]),
+            Player::Two => (p2_sum, [p1_sum, p3_sum]),
+            Player::Three => (p3_sum, [p1_sum, p2_sum]),
+        };
+
+        if loser_sums.iter().any(|x| *x > 880) {
+            return Err(ApiError::ScoreTooHigh);
+        }
+
+        if winners_score.abs() != self.playing_bid && winners_sum != 880 && winners_sum != 1000 {
+            return Err(ApiError::ScoreTooHigh);
+        }
+
+        if winners_sum > 880 && winners_sum != 1000 {
+            return Err(ApiError::ScoreTooHigh);
+        }
+
+        if self.playing_bid < self.winning_bid {
+            return Err(ApiError::PlayingBidMustBeHigher);
+        }
+
+        Ok(())
     }
 }
 
@@ -244,7 +318,7 @@ impl TryFrom<&RoundScores> for FormRoundScores {
             player_1_score: value.player_1.try_into()?,
             player_2_score: value.player_2.try_into()?,
             player_3_score: value.player_3.try_into()?,
-            bid_winner: value.bid_winner.ok_or(ApiError::MissingValue)? as i32,
+            bid_winner: value.bid_winner.ok_or(ApiError::MissingValue)?,
             winning_bid: value.winning_bid.ok_or(ApiError::MissingValue)?,
             playing_bid: value.played_bid.ok_or(ApiError::MissingValue)?,
         })
@@ -257,52 +331,17 @@ async fn do_add_scores(
     pool: &State<Pool<Postgres>>,
     context: &State<TysiacContext>,
 ) -> Result<()> {
-    let player = match player_scores.bid_winner {
-        1 => Player::One,
-        2 => Player::Two,
-        3 => Player::Three,
-        n => return Err(ApiError::NotAValidPlayer { n }),
-    };
-
-    let winners_score = player_scores.for_player(player);
-
     let sums = sqlx::query!(
         "SELECT sum(player_1) as player_1, sum(player_2) as player_2, sum(player_3) as player_3 FROM tysiac_scores WHERE game_id = $1", game_id
     )
     .fetch_one(&**pool)
     .await?;
 
-    let p1_sum = sums
-        .player_1
-        .map(|x| (x as i32) + player_scores.player_1_score.value());
-    let p2_sum = sums
-        .player_2
-        .map(|x| (x as i32) + player_scores.player_2_score.value());
-    let p3_sum = sums
-        .player_3
-        .map(|x| (x as i32) + player_scores.player_3_score.value());
+    let p1_sum = sums.player_1.unwrap_or(0) as i32 + player_scores.player_1_score.value();
+    let p2_sum = sums.player_2.unwrap_or(0) as i32 + player_scores.player_2_score.value();
+    let p3_sum = sums.player_3.unwrap_or(0) as i32 + player_scores.player_3_score.value();
 
-    let (winners_sum, loser_sums) = match player {
-        Player::One => (p1_sum, [p2_sum, p3_sum]),
-        Player::Two => (p2_sum, [p1_sum, p3_sum]),
-        Player::Three => (p3_sum, [p1_sum, p2_sum]),
-    };
-
-    if loser_sums.iter().filter_map(|x| *x).any(|x| x > 880) {
-        return Err(ApiError::ScoreTooHigh);
-    }
-
-    if winners_score.abs() != player_scores.playing_bid && winners_sum != Some(880) {
-        return Err(ApiError::ScoreTooHigh);
-    }
-
-    if winners_sum > Some(880) && winners_sum != Some(1000) {
-        return Err(ApiError::ScoreTooHigh);
-    }
-
-    if player_scores.playing_bid < player_scores.winning_bid {
-        return Err(ApiError::PlayingBidMustBeHigher);
-    }
+    player_scores.validate_scores(p1_sum, p2_sum, p3_sum)?;
 
     sqlx::query!(
         "INSERT INTO tysiac_scores (game_id, player_1, player_2, player_3, bid_winner, winning_bid, played_bid )
@@ -311,7 +350,7 @@ async fn do_add_scores(
         player_scores.player_1_score.value(),
         player_scores.player_2_score.value(),
         player_scores.player_3_score.value(),
-        player as _,
+        player_scores.bid_winner as _,
         player_scores.winning_bid,
         player_scores.playing_bid,
     )
@@ -321,6 +360,60 @@ async fn do_add_scores(
     let _ = context.sender.clone().send(TysiacEvent::ScoreUpdated);
 
     Ok(())
+}
+
+async fn do_edit_scores(
+    player_scores: &[FormEditRoundScores],
+    pool: &State<Pool<Postgres>>,
+) -> Result<()> {
+    player_scores.iter().try_fold(
+        (0, 0, 0),
+        |(p1_sum, p2_sum, p3_sum),
+         FormEditRoundScores {
+             index: _,
+             scores,
+             delete: _,
+         }| {
+            scores.validate_scores(
+                p1_sum + scores.for_player(Player::One),
+                p2_sum + scores.for_player(Player::Two),
+                p3_sum + scores.for_player(Player::Three),
+            )?;
+            Result::Ok((
+                p1_sum + scores.for_player(Player::One),
+                p2_sum + scores.for_player(Player::Two),
+                p3_sum + scores.for_player(Player::Three),
+            ))
+        },
+    )?;
+
+    futures::future::join_all(player_scores.iter().map(
+        |FormEditRoundScores {
+             index,
+             scores,
+             delete: _,
+         }| {
+            sqlx::query!(
+                "UPDATE tysiac_scores
+            SET player_1=$1, player_2=$2, player_3=$3, bid_winner=$4, winning_bid=$5, played_bid=$6
+            WHERE index=$7;",
+                scores.player_1_score.value(),
+                scores.player_2_score.value(),
+                scores.player_3_score.value(),
+                scores.bid_winner as _,
+                scores.winning_bid,
+                scores.playing_bid,
+                index,
+            )
+            .execute(&**pool)
+        },
+    ))
+    .await
+    .into_iter()
+    .try_fold((), |_, x| {
+        x.map_err(ApiError::SqlError)?;
+        Result::Ok(())
+    })
 }
 
 #[get("/events", format = "json")]
@@ -390,6 +483,13 @@ pub async fn index(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Templat
     Some(Template::render("tysiac/game", &context))
 }
 
+#[get("/<game_id>/edit", format = "html", rank = 2)]
+pub async fn edit(game_id: i32, pool: &State<Pool<Postgres>>) -> Option<Template> {
+    let game = result_to_option(load_game(game_id, pool).await)?;
+    let context: GameContext = (&game).into();
+    Some(Template::render("tysiac/edit", &context))
+}
+
 #[get("/new", format = "html")]
 pub async fn new_html() -> Template {
     Template::render(
@@ -449,5 +549,19 @@ pub async fn add_scores_html(
 ) -> Option<Redirect> {
     result_to_option(do_add_scores(game_id, &player_scores, pool, context).await)?;
 
+    Some(Redirect::to(uri!("/tysiac", index(game_id))))
+}
+
+#[post(
+    "/<game_id>/edit",
+    data = "<edit_scores>",
+    format = "application/x-www-form-urlencoded"
+)]
+pub async fn edit_scores_post(
+    game_id: i32,
+    edit_scores: Form<FormEditAllScores>,
+    pool: &State<Pool<Postgres>>,
+) -> Option<Redirect> {
+    result_to_option(do_edit_scores(&edit_scores.all_scores, pool).await)?;
     Some(Redirect::to(uri!("/tysiac", index(game_id))))
 }
