@@ -6,6 +6,7 @@ use rocket::{
         error::ErrorKind, Error as RocketFormError, Form, FromForm, FromFormField,
         Result as RocketResult, ValueField,
     },
+    http::Status,
     response::{
         stream::{Event, EventStream},
         Redirect,
@@ -19,6 +20,7 @@ use rocket_okapi::{
     openapi,
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
 use thiserror::Error;
 use tokio::{
@@ -562,6 +564,17 @@ pub async fn edit_scores_post(
     edit_scores: Form<FormEditAllScores>,
     pool: &State<Pool<Postgres>>,
 ) -> Option<Redirect> {
+    let password = std::env::var("ADMIN_PASSWORD").ok()?;
+    let mut password_hasher = Sha256::new();
+    password_hasher.update(password);
+
+    let mut input_hasher = Sha256::new();
+    input_hasher.update(&edit_scores.password);
+
+    if input_hasher.finalize() != password_hasher.finalize() {
+        return None;
+    }
+
     result_to_option(do_edit_scores(&edit_scores.all_scores, pool).await)?;
     Some(Redirect::to(uri!("/tysiac", index(game_id))))
 }

@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.58"
 futures = "0.3.21"
 serde = "1.0.139"
+sha2 = "0.10.2"
 sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres"] }
 tokio = "1.20.0"
 thiserror = "1.0.31"
