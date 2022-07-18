@@ -1,0 +1,66 @@
+{% set width = 500 %}
+{% set height = 400 %}
+{% set num_scores = cumulative_round_scores | length %}
+{% set dealer_index = num_scores % 3 %}
+{% set dx = width / num_scores %}
+
+{% set under_height = 0 %}
+{% if min_score < 0 %} {% set under_height=-1 * height * min_score / 1000 + 10 %} {% endif %} {% if prev %} <a
+    href="{{prev}}">prev</a>
+    {% endif %}
+    <a href="new">new</a>
+    {% if next %}
+    <a href="{{next}}">next</a>
+    {% endif %}
+
+    <form method="POST" action="edit">
+        <table>
+            <thead>
+                {% for name in player_names %}
+
+                <th>
+                    {% if dealer_index == loop.index0 %}*{% endif %}
+                    {{name}}
+                </th>
+
+                {% endfor %}
+            </thead>
+
+            {% for scores in round_scores-%}
+            {% set score_index = loop.index0 %}
+            <tr>
+                <input name="all_scores[{{ score_index }}].index" type="hidden" value="{{ scores.index }}">
+                {% for delta in [round_scores[loop.index0].player_1, round_scores[loop.index0].player_2,
+                round_scores[loop.index0].player_3] %}
+                <td>
+                    <input name="all_scores[{{ score_index }}].scores.player-{{ loop.index }}-score" type="number"
+                        value="{{ delta }}" step="5" />
+                </td>
+                {% endfor %}
+
+                <td>
+                    <label>Delete? <input name="all_scores[{{ score_index }}].delete" type="checkbox"></label>
+                </td>
+                <td>
+                    <select name="all_scores[{{ score_index }}].scores.bid-winner">
+                        {% for option in ["One", "Two" , "Three"] %}
+                        <option value="{{ option }}" {% if scores.bid_winner==option %} selected {% endif %}>
+                            {{ option }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <input name="all_scores[{{ score_index }}].scores.winning-bid" type="number"
+                        value="{{ scores.winning_bid }}" step="5" />
+                </td>
+                <td>
+                    <input name="all_scores[{{ score_index }}].scores.playing-bid" type="number"
+                        value="{{ scores.played_bid }}" step="5" />
+                </td>
+            </tr>
+            {%- endfor %}
+        </table><br>
+        <label>Password: <input name="password" type="password"></label><br>
+        <input type="submit">
+    </form>

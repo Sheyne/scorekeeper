@@ -1,5 +1,4 @@
 use rocket::form::{FromFormField, ValueField};
-use rocket_okapi::okapi::schemars::{self, JsonSchema};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -9,7 +8,7 @@ pub enum MultipleOfError {
     NotAMultipleOf { n: i32 },
 }
 
-#[derive(Serialize, JsonSchema)]
+#[derive(Serialize)]
 pub struct MultipleOf<const N: i32>(i32);
 
 impl<const N: i32> MultipleOf<N> {

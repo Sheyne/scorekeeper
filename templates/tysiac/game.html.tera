@@ -5,78 +5,83 @@
 {% set dx = width / num_scores %}
 
 {% set under_height = 0 %}
-{% if min_score < 0 %}
-    {% set under_height = -1 * height * min_score / 1000 + 10 %}
-{% endif %}
+{% if min_score < 0 %} {% set under_height=-1 * height * min_score / 1000 + 10 %} {% endif %} {% if prev %} <a
+    href="{{prev}}">prev</a>
+    {% endif %}
+    <a href="new">new</a>
+    {% if next %}
+    <a href="{{next}}">next</a>
+    {% endif %}
 
-{% if prev %}
-<a href="{{prev}}">prev</a>
-{% endif %}
-<a href="new">new</a>
-{% if next %}
-<a href="{{next}}">next</a>
-{% endif %}
-
-<table>
-    <tr>
-        {% for name in player_names %}
-
-        <th colspan="2">
-            {% if dealer_index == loop.index0 %}*{% endif %}
-            {{name}}
-        </th>
-
-        {% endfor %}
-    </tr>
-
-    {% for scores in cumulative_round_scores-%}
-    <tr>
-        {% for delta in [round_scores[loop.index0].player_1, round_scores[loop.index0].player_2, round_scores[loop.index0].player_3] %}
-        <td style="color:grey; text-align: right; color: {% if delta > 0 %}green{% elif delta < 0 %}red{% else %}grey{% endif %}">{% if delta > 0 %}+{% endif %}{{ delta }}</td>
-        <td>{{ scores[loop.index0] }}</td>
-        {% endfor %}
-    </tr>
-    {%- endfor %}
-
-    <form method="POST" action="{{ game_id }}/add-scores">
+    <table>
         <tr>
-            <td colspan="6">
-                <label for="winning-bid">Winning Bid: </label><input type="number" id="winning-bid" name="winning-bid" 
-                    onchange="if (Number(document.getElementById('playing-bid').value) < Number(this.value)) document.getElementById('playing-bid').value = this.value"
-                /><br/>
-                <label for="playing-bid">Playing Bid: </label><input type="number" id="playing-bid" name="playing-bid" /><br/>
-            </td>
-        </tr>
-        <tr><td colspan="6">Bid Winner: </td></tr>
-        <tr>
-            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="1" /></td>
-            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="2" /></td>
-            <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="3" /></td>
-        </tr>
-        <tr>
-            {% for player in range(start=1, end=4) %}
-            <td colspan="2"><input type="number" name="player-{{ player }}-score" /></td>
+            {% for name in player_names %}
+
+            <th colspan="2">
+                {% if dealer_index == loop.index0 %}*{% endif %}
+                {{name}}
+            </th>
+
             {% endfor %}
         </tr>
-        <tr><td colspan="6"><input type="submit" /></td></tr>
-    </form>
-</table>
+
+        {% for scores in cumulative_round_scores-%}
+        <tr>
+            {% for delta in [round_scores[loop.index0].player_1, round_scores[loop.index0].player_2,
+            round_scores[loop.index0].player_3] %}
+            <td
+                style="color:grey; text-align: right; color: {% if delta > 0 %}green{% elif delta < 0 %}red{% else %}grey{% endif %}">
+                {% if delta > 0 %}+{% endif %}{{ delta }}</td>
+            <td>{{ scores[loop.index0] }}</td>
+            {% endfor %}
+        </tr>
+        {%- endfor %}
+
+        <form method="POST" action="{{ game_id }}/add-scores">
+            <tr>
+                <td colspan="6">
+                    <label for="winning-bid">Winning Bid: </label><input type="number" id="winning-bid"
+                        name="winning-bid" step="5"
+                        onchange="if (Number(document.getElementById('playing-bid').value) < Number(this.value)) document.getElementById('playing-bid').value = this.value" /><br />
+                    <label for="playing-bid">Playing Bid: </label><input type="number" id="playing-bid"
+                        name="playing-bid" step="5" /><br />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="6">Bid Winner: </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="1" /></td>
+                <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="2" /></td>
+                <td colspan="2" style="text-align: center;"><input type="radio" name="bid-winner" value="3" /></td>
+            </tr>
+            <tr>
+                {% for player in range(start=1, end=4) %}
+                <td colspan="2"><input type="number" name="player-{{ player }}-score" step="5" /></td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td colspan="6"><input type="submit" /></td>
+            </tr>
+        </form>
+    </table>
 
 
-<svg viewBox="0 0 {{ width }} {{ height + under_height }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" width={{width}} height={{height + under_height}}>
-    <line x1="1" y1="0" x2="1" y2="{{ height }}" stroke="grey" />
-    <line x1="{{width - 1}}" y1="0" x2="{{width - 1}}" y2="{{ height }}" stroke="grey" />
-    {% for line in range(start=0, end=6) %}
-    {% set y_pos = 1 + (height - 2) / 5 * line %}
-    <line x1="0" y1="{{y_pos}}" x2="{{width}}" y2="{{y_pos}}" stroke="grey" />
-    {% endfor %}
+    <svg viewBox="0 0 {{ width }} {{ height + under_height }}" xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="none" width={{width}} height={{height + under_height}}>
+        <line x1="1" y1="0" x2="1" y2="{{ height }}" stroke="grey" />
+        <line x1="{{width - 1}}" y1="0" x2="{{width - 1}}" y2="{{ height }}" stroke="grey" />
+        {% for line in range(start=0, end=6) %}
+        {% set y_pos = 1 + (height - 2) / 5 * line %}
+        <line x1="0" y1="{{y_pos}}" x2="{{width}}" y2="{{y_pos}}" stroke="grey" />
+        {% endfor %}
 
-    {% for color in ["red", "green", "blue"]%}
-    {% set player = loop.index0 %}
-    <path d="M 0,{{height}}
+        {% for color in ["red", "green", "blue"]%}
+        {% set player = loop.index0 %}
+        <path d="M 0,{{height}}
              {% for scores in cumulative_round_scores -%}
               L {{ loop.index * dx }},{{ (height - 1) - ((height-2) * scores[player] / 1000) }}
              {%- endfor %}
              " stroke="{{color}}" fill="transparent" stroke-width=2 />
-    {% endfor %}
-</svg>
+        {% endfor %}
+    </svg>

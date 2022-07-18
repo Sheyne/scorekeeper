@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
 
     let tysiac_context: TysiacContext = Default::default();
 
-    rocket::build()
+    let _ = rocket::build()
         .attach(Template::fairing())
         .manage(pool)
         .manage(tysiac_context)
@@ -59,10 +59,12 @@ async fn main() -> Result<()> {
                 tysiac::add_scores,
                 tysiac::new,
                 tysiac::events,
+                tysiac::edit,
                 tysiac::index,
                 tysiac::new_html,
                 tysiac::create_html,
                 tysiac::add_scores_html,
+                tysiac::edit_scores_post,
                 tysiac::play_with_sse,
             ],
         )
